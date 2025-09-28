@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Flame, Menu, X, User, Crown, ChevronDown, LogOut, UserCircle, Globe, CreditCard, Shield, Bell } from 'lucide-react';
+import { Flame, Menu, X, User, Crown, ChevronDown, LogOut, CircleUser as UserCircle, Globe, CreditCard, Shield, Bell } from 'lucide-react';
 import { useAuthStore } from '../../store/authStore';
 import AuthModal from '../auth/AuthModal';
 import Button from '../ui/Button';
