@@ -134,11 +134,20 @@ export interface ApiResponse<T> {
   data?: T;
   models?: Model[];
   contents?: Content[];
+  contentGroups?: ContentGroup[];
+  hasMoreContent?: boolean;
+  categories?: string[];
   reports?: Report[];
   comments?: Comment[];
   pagination?: PaginationInfo;
   message?: string;
   error?: string;
+}
+
+export interface ContentGroup {
+  date: string;
+  contents: Content[];
+  count: number;
 }
 
 export interface Comment {

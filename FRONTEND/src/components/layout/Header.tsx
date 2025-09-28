@@ -89,6 +89,51 @@ const Header: React.FC = () => {
               <NavLink to="/models" active={location.pathname === '/models'}>
                 Models
               </NavLink>
+              <div className="relative group">
+                <button className="font-medium text-gray-200 hover:text-primary-400 transition-colors duration-200 flex items-center">
+                  Categories
+                  <ChevronDown size={14} className="ml-1" />
+                </button>
+                <div className="absolute top-full left-0 mt-2 w-48 bg-dark-200 border border-dark-100 rounded-xl shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
+                  <div className="py-2">
+                    <Link to="/asian" className="block px-4 py-2 text-gray-300 hover:bg-dark-100 hover:text-primary-400 transition-colors">
+                      Asian Models
+                    </Link>
+                    <Link to="/western" className="block px-4 py-2 text-gray-300 hover:bg-dark-100 hover:text-primary-400 transition-colors">
+                      Western Models
+                    </Link>
+                    <Link to="/banned" className="block px-4 py-2 text-gray-300 hover:bg-dark-100 hover:text-primary-400 transition-colors">
+                      Banned Content
+                    </Link>
+                    <Link to="/unknown" className="block px-4 py-2 text-gray-300 hover:bg-dark-100 hover:text-primary-400 transition-colors">
+                      Unknown Content
+                    </Link>
+                    {user?.isPremium && (
+                      <>
+                        <div className="border-t border-dark-100 my-2"></div>
+                        <div className="px-4 py-1">
+                          <span className="text-xs text-yellow-500 font-medium flex items-center">
+                            <Crown size={12} className="mr-1" />
+                            VIP EXCLUSIVE
+                          </span>
+                        </div>
+                        <Link to="/vip/asian" className="block px-4 py-2 text-yellow-400 hover:bg-dark-100 hover:text-yellow-300 transition-colors">
+                          VIP Asian
+                        </Link>
+                        <Link to="/vip/western" className="block px-4 py-2 text-yellow-400 hover:bg-dark-100 hover:text-yellow-300 transition-colors">
+                          VIP Western
+                        </Link>
+                        <Link to="/vip/banned" className="block px-4 py-2 text-yellow-400 hover:bg-dark-100 hover:text-yellow-300 transition-colors">
+                          VIP Banned
+                        </Link>
+                        <Link to="/vip/unknown" className="block px-4 py-2 text-yellow-400 hover:bg-dark-100 hover:text-yellow-300 transition-colors">
+                          VIP Unknown
+                        </Link>
+                      </>
+                    )}
+                  </div>
+                </div>
+              </div>
               <NavLink to="/premium" active={location.pathname === '/premium'}>
                 Premium
               </NavLink>
@@ -233,6 +278,48 @@ const Header: React.FC = () => {
               <MobileNavLink to="/models" active={location.pathname === '/models'}>
                 Models
               </MobileNavLink>
+              <MobileNavLink to="/asian" active={location.pathname === '/asian'}>
+                Asian Models
+              </MobileNavLink>
+              <MobileNavLink to="/western" active={location.pathname === '/western'}>
+                Western Models
+              </MobileNavLink>
+              <MobileNavLink to="/banned" active={location.pathname === '/banned'}>
+                Banned Content
+              </MobileNavLink>
+              <MobileNavLink to="/unknown" active={location.pathname === '/unknown'}>
+                Unknown Content
+              </MobileNavLink>
+              
+              {user?.isPremium && (
+                <>
+                  <div className="border-t border-dark-300 my-2 pt-2">
+                    <div className="px-3 py-1 mb-2">
+                      <span className="text-xs text-yellow-500 font-medium flex items-center">
+                        <Crown size={12} className="mr-1" />
+                        VIP EXCLUSIVE
+                      </span>
+                    </div>
+                    <MobileNavLink to="/vip/asian" active={location.pathname === '/vip/asian'}>
+                      <Crown size={16} className="mr-2 text-yellow-500" />
+                      VIP Asian
+                    </MobileNavLink>
+                    <MobileNavLink to="/vip/western" active={location.pathname === '/vip/western'}>
+                      <Crown size={16} className="mr-2 text-yellow-500" />
+                      VIP Western
+                    </MobileNavLink>
+                    <MobileNavLink to="/vip/banned" active={location.pathname === '/vip/banned'}>
+                      <Crown size={16} className="mr-2 text-yellow-500" />
+                      VIP Banned
+                    </MobileNavLink>
+                    <MobileNavLink to="/vip/unknown" active={location.pathname === '/vip/unknown'}>
+                      <Crown size={16} className="mr-2 text-yellow-500" />
+                      VIP Unknown
+                    </MobileNavLink>
+                  </div>
+                </>
+              )}
+              
               <MobileNavLink to="/premium" active={location.pathname === '/premium'}>
                 Premium
               </MobileNavLink>

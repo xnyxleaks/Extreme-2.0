@@ -72,6 +72,12 @@ module.exports = (sequelize, DataTypes) => {
       type: DataTypes.DATE,
       allowNull: false,
       defaultValue: DataTypes.NOW
+    },
+    postdate: {
+      type: DataTypes.DATE,
+      allowNull: true,
+      defaultValue: DataTypes.NOW,
+      comment: 'Date when content was posted, used for date-based pagination'
     }
   }, {
     timestamps: true, // mantém updatedAt automático

@@ -1,10 +1,11 @@
 // routes/content.js
 const express = require('express');
 const router = express.Router();
-const { Content, Model, UserHistory } = require('../models');
+const { Content, Model, UserHistory, sequelize } = require('../models');
 const { Op } = require('sequelize');
 const slugify = require('slugify');
 const encryptionService = require('../utils/encryption');
+
 // util: slug = <slug-da-modelo>-<slug-do-título>(-<contador> quando houver repetição do título para a mesma modelo)
 async function generateContentSlug(modelName, contentTitle, modelId) {
   const modelSlug = slugify(modelName, { lower: true, strict: true });
@@ -18,6 +19,213 @@ async function generateContentSlug(modelName, contentTitle, modelId) {
   const base = `${modelSlug}-${titleSlug}`;
   return existingCount > 0 ? `${base}-${existingCount + 1}` : base;
 }
+
+// Helper function to group content by date
+async function getContentByDateGroups(page, filters = {}) {
+  const daysToSkip = (page - 1) * 30;
+  
+  // Get distinct dates with content count, ordered by date desc
+  const dateQuery = `
+    SELECT DATE(COALESCE("postdate", "createdAt")) as post_date, COUNT(*) as content_count
+    FROM "Contents" 
+    WHERE "isActive" = true AND "status" = 'active'
+    ${filters.ethnicity ? `AND EXISTS (
+      SELECT 1 FROM "Models" m 
+      WHERE m."model_id" = "Contents"."model_id" 
+      AND m."ethnicity" = '${filters.ethnicity}'
+    )` : ''}
+    ${filters.category ? `AND "tags" @> '["${filters.category}"]'` : ''}
+    GROUP BY DATE(COALESCE("postdate", "createdAt"))
+    ORDER BY DATE(COALESCE("postdate", "createdAt")) DESC
+    LIMIT 30 OFFSET ${daysToSkip}
+  `;
+  
+  const dateResults = await sequelize.query(dateQuery, {
+    type: sequelize.QueryTypes.SELECT
+  });
+  
+  if (dateResults.length === 0) {
+    return { contentGroups: [], hasMoreContent: false };
+  }
+  
+  const dates = dateResults.map(r => r.post_date);
+  
+  // Get all content for these dates
+  const where = {
+    isActive: true,
+    status: 'active',
+    [Op.or]: [
+      {
+        postdate: {
+          [Op.and]: [
+            sequelize.where(sequelize.fn('DATE', sequelize.col('Content.postdate')), {
+              [Op.in]: dates
+            })
+          ]
+        }
+      },
+      {
+        postdate: { [Op.is]: null },
+        createdAt: {
+          [Op.and]: [
+            sequelize.where(sequelize.fn('DATE', sequelize.col('Content.createdAt')), {
+              [Op.in]: dates
+            })
+          ]
+        }
+      }
+    ]
+  };
+  
+  // Remove the old createdAt filter since we're using the OR condition above
+  /*
+  const where = {
+    isActive: true,
+    status: 'active',
+    createdAt: {
+      [Op.and]: [
+        sequelize.where(sequelize.fn('DATE', sequelize.col('Content.createdAt')), {
+          [Op.in]: dates
+        })
+      ]
+    }
+  };
+  */
+  
+  if (filters.category) {
+    where.tags = { [Op.contains]: [filters.category] };
+  }
+  
+  const includeModel = {
+    model: Model,
+    as: 'model',
+    attributes: ['id', 'model_id', 'name', 'slug', 'photoUrl'],
+    required: true
+  };
+  
+  if (filters.ethnicity) {
+    includeModel.where = { ethnicity: filters.ethnicity };
+  }
+  
+  const contents = await Content.findAll({
+    where,
+    include: [includeModel],
+    order: [[sequelize.fn('COALESCE', sequelize.col('postdate'), sequelize.col('createdAt')), 'DESC']]
+  });
+  
+  // Group by date
+  const contentGroups = dates.map(date => {
+    const dayContents = contents.filter(content => {
+      const postDate = content.postdate || content.createdAt;
+      const contentDate = new Date(postDate).toISOString().split('T')[0];
+      return contentDate === date;
+    });
+    
+    return {
+      date,
+      contents: dayContents,
+      count: dayContents.length
+    };
+  });
+  
+  // Check if there are more days
+  const nextPageQuery = `
+    SELECT COUNT(DISTINCT DATE(COALESCE("postdate", "createdAt"))) as total_days
+    FROM "Contents" 
+    WHERE "isActive" = true AND "status" = 'active'
+    ${filters.ethnicity ? `AND EXISTS (
+      SELECT 1 FROM "Models" m 
+      WHERE m."model_id" = "Contents"."model_id" 
+      AND m."ethnicity" = '${filters.ethnicity}'
+    )` : ''}
+    ${filters.category ? `AND "tags" @> '["${filters.category}"]'` : ''}
+    AND DATE(COALESCE("postdate", "createdAt")) < '${dates[dates.length - 1]}'
+  `;
+  
+  const nextPageResult = await sequelize.query(nextPageQuery, {
+    type: sequelize.QueryTypes.SELECT
+  });
+  
+  const hasMoreContent = nextPageResult[0]?.total_days > 0;
+  
+  return { contentGroups, hasMoreContent };
+}
+
+// Get available categories from content
+async function getAvailableCategories(filters = {}) {
+  const where = {
+    isActive: true,
+    status: 'active',
+    tags: { [Op.ne]: null }
+  };
+  
+  const includeModel = {
+    model: Model,
+    as: 'model',
+    required: true
+  };
+  
+  if (filters.ethnicity) {
+    includeModel.where = { ethnicity: filters.ethnicity };
+  }
+  
+  const contents = await Content.findAll({
+    where,
+    include: [includeModel],
+    attributes: ['tags']
+  });
+  
+  const allTags = new Set();
+  contents.forEach(content => {
+    if (content.tags && Array.isArray(content.tags)) {
+      content.tags.forEach(tag => allTags.add(tag));
+    }
+  });
+  
+  return Array.from(allTags).sort();
+}
+
+// New route for date-based pagination
+router.get('/by-date', async (req, res) => {
+  try {
+    const {
+      page = 1,
+      ethnicity,
+      category
+    } = req.query;
+    
+    const filters = {};
+    if (ethnicity) filters.ethnicity = ethnicity;
+    if (category) filters.category = category;
+    
+    const { contentGroups, hasMoreContent } = await getContentByDateGroups(parseInt(page), filters);
+    
+    res.json({
+      contentGroups,
+      hasMoreContent,
+      currentPage: parseInt(page)
+    });
+  } catch (error) {
+    console.error('Error fetching content by date:', error);
+    res.status(500).json({ error: 'Error fetching content by date', details: error.message });
+  }
+});
+
+// Get available categories
+router.get('/categories', async (req, res) => {
+  try {
+    const { ethnicity } = req.query;
+    const filters = {};
+    if (ethnicity) filters.ethnicity = ethnicity;
+    
+    const categories = await getAvailableCategories(filters);
+    
+    res.json({ categories });
+  } catch (error) {
+    console.error('Error fetching categories:', error);
+    res.status(500).json({ error: 'Error fetching categories', details: error.message });
+  }
+});
 
 // Listar todos os conteúdos
 router.get('/', async (req, res) => {

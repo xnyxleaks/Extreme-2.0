@@ -122,6 +122,14 @@ export const contentApi = {
     const response = await api.get<ApiResponse<Content[]>>("/content", { params });
     return response.data;
   },
+  getByDate: async (params?: { page?: number; ethnicity?: string; category?: string }) => {
+    const response = await api.get("/content/by-date", { params });
+    return response.data;
+  },
+  getCategories: async (params?: { ethnicity?: string }) => {
+    const response = await api.get("/content/categories", { params });
+    return response.data;
+  },
   getByModel: async (
     model_id: string,
     params?: { page?: number; limit?: number; type?: string; sortBy?: string }
